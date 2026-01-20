@@ -1,4 +1,4 @@
-def generate_resources(subject: str):
+async def get_resources_for_subject(subject: str):
     base = subject.lower()
 
     generic_resources = {
