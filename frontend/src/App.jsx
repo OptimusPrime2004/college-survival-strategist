@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { generatePlan } from "./api";
 import "./styles.css";
 
+// College Survival Strategist - Production Ready
 export default function App() {
   const [subjects, setSubjects] = useState("");
   const [examDates, setExamDates] = useState("");
