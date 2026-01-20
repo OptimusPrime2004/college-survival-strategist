@@ -1,4 +1,4 @@
-async def get_subject_difficulty(subject: str) -> int:
+def get_subject_difficulty(subject: str) -> int:
     """
     Returns difficulty score:
     1 = Easy

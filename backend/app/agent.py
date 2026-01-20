@@ -30,7 +30,7 @@ async def generate_survival_plan(data):
         days_to_exam = max(1, (exam_date - today).days)
 
         urgency_score = max(1, 30 - days_to_exam)
-        difficulty = await get_subject_difficulty(subject)
+        difficulty = get_subject_difficulty(subject)
 
         priority_score = round(
             (urgency_score * 0.7) + (difficulty * 0.3),
@@ -102,7 +102,7 @@ async def generate_survival_plan(data):
     resources = {}
 
     for subject in subject_objects[:TOP_K]:
-        resources[subject["name"]] = await get_resources_for_subject(
+        resources[subject["name"]] = get_resources_for_subject(
             subject["name"]
         )
 
