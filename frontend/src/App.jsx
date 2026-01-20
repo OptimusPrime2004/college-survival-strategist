@@ -32,8 +32,8 @@ export default function App() {
     }
 
     const payload = {
-      subjects: subjectList,
-      exam_dates: dateList,
+      subjects: subjects.split(",").map(s => s.trim()).filter(Boolean),
+      exam_dates: exam_dates.split(",").map(d => d.trim()).filter(Boolean),
       attendance_percentage: Number(attendance),
       daily_study_hours: Number(hours),
     };
