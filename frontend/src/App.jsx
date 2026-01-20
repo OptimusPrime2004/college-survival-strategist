@@ -20,16 +20,8 @@ export default function App() {
 
     try {
       const payload = {
-        subjects: subjects
-          .split(",")
-          .map(s => s.trim())
-          .filter(Boolean),
-
-        exam_dates: examDates
-          .split(",")
-          .map(d => d.trim())
-          .filter(Boolean),
-
+        subjects: subjects.split(",").map(s => s.trim()),
+        exam_dates: examDates.split(",").map(d => d.trim()),
         attendance: Number(attendance),
         daily_hours: Number(dailyHours)
       };
