@@ -1,147 +1,129 @@
-import { useState, useEffect } from "react";
-import "./styles.css";
+import { useState } from "react";
+import { generatePlan } from "./api";
 
-export default function App() {
+function App() {
   const [subjects, setSubjects] = useState("");
   const [examDates, setExamDates] = useState("");
-  const [attendance, setAttendance] = useState("");
-  const [dailyHours, setDailyHours] = useState("");
+  const [attendance, setAttendance] = useState(80);
+  const [dailyHours, setDailyHours] = useState(3);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
-  const [darkMode, setDarkMode] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    document.body.className = darkMode ? "dark" : "light";
-  }, [darkMode]);
-
-  const handleGeneratePlan = async () => {
+  const handleSubmit = async () => {
     setError("");
     setResult(null);
 
+    // --- STRICT, SAFE PARSING ---
+    const subjectsArray = subjects
+      .split(",")
+      .map(s => s.trim())
+      .filter(Boolean);
+
+    const examDatesArray = examDates
+      .split(",")
+      .map(d => d.trim())
+      .filter(Boolean);
+
+    if (subjectsArray.length === 0) {
+      setError("Please enter at least one subject.");
+      return;
+    }
+
+    if (subjectsArray.length !== examDatesArray.length) {
+      setError("Number of subjects and exam dates must match.");
+      return;
+    }
+
+    const payload = {
+      subjects: subjectsArray,
+      exam_dates: examDatesArray,
+      attendance: Number(attendance),
+      daily_hours: Number(dailyHours),
+    };
+
+    console.log("FINAL PAYLOAD SENT →", payload);
+
     try {
-      const payload = {
-        subjects: subjects.split(",").map(s => s.trim()),
-        exam_dates: examDates.split(",").map(d => d.trim()),
-        attendance: Number(attendance),
-        daily_hours: Number(dailyHours)
-      };
-
-      console.log("Payload sent to backend:", payload);
-
-      const response = await fetch("http://127.0.0.1:8000/analyze", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(payload)
-      });
-
-      if (!response.ok) {
-        throw new Error("Backend error");
-      }
-
-      const data = await response.json();
+      setLoading(true);
+      const data = await generatePlan(payload);
       setResult(data);
     } catch (err) {
-      console.error(err);
+      console.error("Frontend caught error:", err);
       setError("Failed to generate plan. Check inputs.");
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="app-container">
-      <header className="header">
-        <h1>College Survival Strategist</h1>
-        <button className="theme-toggle" onClick={() => setDarkMode(!darkMode)}>
-          {darkMode ? "☀ Light" : "🌙 Dark"}
-        </button>
-        <p className="subtitle">
-          Smart prioritization with explainable reasoning & resources
-        </p>
-      </header>
+    <div style={{ maxWidth: "700px", margin: "40px auto", fontFamily: "sans-serif" }}>
+      <h1>College Survival Strategist</h1>
+      <p>Smart prioritization with explainable reasoning & resources</p>
 
-      <div className="card">
-        <label>
-          Subjects (comma separated)
-          <input
-            type="text"
-            value={subjects}
-            onChange={e => setSubjects(e.target.value)}
-            placeholder="os, dbms, math"
-          />
-        </label>
+      <label>Subjects (comma separated)</label>
+      <input
+        type="text"
+        value={subjects}
+        onChange={e => setSubjects(e.target.value)}
+        placeholder="os, dbms, math"
+        style={{ width: "100%", marginBottom: "12px" }}
+      />
 
-        <label>
-          Exam Dates (same order, YYYY-MM-DD)
-          <input
-            type="text"
-            value={examDates}
-            onChange={e => setExamDates(e.target.value)}
-            placeholder="2026-03-04, 2026-03-10, 2026-03-14"
-          />
-        </label>
+      <label>Exam Dates (same order, YYYY-MM-DD)</label>
+      <input
+        type="text"
+        value={examDates}
+        onChange={e => setExamDates(e.target.value)}
+        placeholder="2026-03-01,2026-03-03,2026-03-10"
+        style={{ width: "100%", marginBottom: "12px" }}
+      />
 
-        <label>
-          Attendance Percentage
-          <input
-            type="number"
-            value={attendance}
-            onChange={e => setAttendance(e.target.value)}
-            placeholder="80"
-          />
-        </label>
+      <label>Attendance Percentage</label>
+      <input
+        type="number"
+        value={attendance}
+        onChange={e => setAttendance(e.target.value)}
+        style={{ width: "100%", marginBottom: "12px" }}
+      />
 
-        <label>
-          Daily Study Hours
-          <input
-            type="number"
-            value={dailyHours}
-            onChange={e => setDailyHours(e.target.value)}
-            placeholder="3"
-          />
-        </label>
+      <label>Daily Study Hours</label>
+      <input
+        type="number"
+        value={dailyHours}
+        onChange={e => setDailyHours(e.target.value)}
+        style={{ width: "100%", marginBottom: "20px" }}
+      />
 
-        <button className="primary-btn" onClick={handleGeneratePlan}>
-          Generate Survival Plan
-        </button>
+      <button
+        onClick={handleSubmit}
+        disabled={loading}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "16px",
+          cursor: "pointer",
+        }}
+      >
+        {loading ? "Generating..." : "Generate Survival Plan"}
+      </button>
 
-        {error && <p className="error">{error}</p>}
-      </div>
+      {error && <p style={{ color: "red", marginTop: "12px" }}>{error}</p>}
 
       {result && (
-        <div className="results">
-          <div className={`risk risk-${result.risk_level?.toLowerCase()}`}>
-            ⚠ Risk Level: {result.risk_level}
-          </div>
-
-          <div className="result-card">
-            <h3>Subject Priority</h3>
-            <ul>
-              {result.subject_priority.map((s, i) => (
-                <li key={i}>{s}</li>
-              ))}
-            </ul>
-          </div>
-
-          {result.weekly_plan && (
-            <div className="result-card">
-              <h3>Weekly Survival Plan</h3>
-              <ul>
-                {result.weekly_plan.map((day, i) => (
-                  <li key={i}>{day}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {result.attendance_advice && (
-            <div className="result-card">
-              <h3>Attendance Advice</h3>
-              <p>{result.attendance_advice}</p>
-            </div>
-          )}
-        </div>
+        <pre
+          style={{
+            background: "#f4f4f4",
+            padding: "16px",
+            marginTop: "20px",
+            overflowX: "auto",
+          }}
+        >
+          {JSON.stringify(result, null, 2)}
+        </pre>
       )}
     </div>
   );
 }
+
+export default App;
