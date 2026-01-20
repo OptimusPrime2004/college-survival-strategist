@@ -1,55 +1,48 @@
 import { useState } from "react";
 import { generatePlan } from "./api";
+import "./styles.css";
 
-function App() {
+export default function App() {
   const [subjects, setSubjects] = useState("");
-  const [examDates, setExamDates] = useState("");
+  const [dates, setDates] = useState("");
   const [attendance, setAttendance] = useState(80);
-  const [dailyHours, setDailyHours] = useState(3);
+  const [hours, setHours] = useState(3);
   const [result, setResult] = useState(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [theme, setTheme] = useState("light");
 
   const handleSubmit = async () => {
     setError("");
     setResult(null);
 
-    // --- STRICT, SAFE PARSING ---
-    const subjectsArray = subjects
+    const subjectList = subjects
       .split(",")
       .map(s => s.trim())
       .filter(Boolean);
 
-    const examDatesArray = examDates
+    const dateList = dates
       .split(",")
       .map(d => d.trim())
       .filter(Boolean);
 
-    if (subjectsArray.length === 0) {
-      setError("Please enter at least one subject.");
-      return;
-    }
-
-    if (subjectsArray.length !== examDatesArray.length) {
-      setError("Number of subjects and exam dates must match.");
+    if (subjectList.length === 0 || subjectList.length !== dateList.length) {
+      setError("Subjects and dates must match.");
       return;
     }
 
     const payload = {
-      subjects: subjectsArray,
-      exam_dates: examDatesArray,
-      attendance: Number(attendance),
-      daily_hours: Number(dailyHours),
+      subjects: subjectList,
+      exam_dates: dateList,
+      attendance_percentage: Number(attendance),
+      daily_study_hours: Number(hours),
     };
-
-    console.log("FINAL PAYLOAD SENT →", payload);
 
     try {
       setLoading(true);
       const data = await generatePlan(payload);
       setResult(data);
-    } catch (err) {
-      console.error("Frontend caught error:", err);
+    } catch (e) {
       setError("Failed to generate plan. Check inputs.");
     } finally {
       setLoading(false);
@@ -57,73 +50,76 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: "700px", margin: "40px auto", fontFamily: "sans-serif" }}>
-      <h1>College Survival Strategist</h1>
-      <p>Smart prioritization with explainable reasoning & resources</p>
+    <div className="app-wrapper" data-theme={theme}>
+      <div className="card">
+        <div className="header">
+          <h1>College Survival Strategist</h1>
+          <button
+            className="theme-toggle"
+            onClick={() =>
+              setTheme(theme === "light" ? "dark" : "light")
+            }
+          >
+            {theme === "light" ? "🌙 Dark" : "☀️ Light"}
+          </button>
+        </div>
 
-      <label>Subjects (comma separated)</label>
-      <input
-        type="text"
-        value={subjects}
-        onChange={e => setSubjects(e.target.value)}
-        placeholder="os, dbms, math"
-        style={{ width: "100%", marginBottom: "12px" }}
-      />
+        <p className="subtitle">
+          Smart prioritization with explainable reasoning & resources
+        </p>
 
-      <label>Exam Dates (same order, YYYY-MM-DD)</label>
-      <input
-        type="text"
-        value={examDates}
-        onChange={e => setExamDates(e.target.value)}
-        placeholder="2026-03-01,2026-03-03,2026-03-10"
-        style={{ width: "100%", marginBottom: "12px" }}
-      />
+        <div className="form">
+          <label>Subjects (comma separated)</label>
+          <input
+            value={subjects}
+            onChange={e => setSubjects(e.target.value)}
+            placeholder="os, dbms, math"
+          />
 
-      <label>Attendance Percentage</label>
-      <input
-        type="number"
-        value={attendance}
-        onChange={e => setAttendance(e.target.value)}
-        style={{ width: "100%", marginBottom: "12px" }}
-      />
+          <label>Exam Dates (same order, YYYY-MM-DD)</label>
+          <input
+            value={dates}
+            onChange={e => setDates(e.target.value)}
+            placeholder="2026-03-01,2026-03-10,2026-03-19"
+          />
 
-      <label>Daily Study Hours</label>
-      <input
-        type="number"
-        value={dailyHours}
-        onChange={e => setDailyHours(e.target.value)}
-        style={{ width: "100%", marginBottom: "20px" }}
-      />
+          <label>Attendance Percentage</label>
+          <input
+            type="number"
+            value={attendance}
+            onChange={e => setAttendance(e.target.value)}
+          />
 
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        style={{
-          width: "100%",
-          padding: "12px",
-          fontSize: "16px",
-          cursor: "pointer",
-        }}
-      >
-        {loading ? "Generating..." : "Generate Survival Plan"}
-      </button>
+          <label>Daily Study Hours</label>
+          <input
+            type="number"
+            value={hours}
+            onChange={e => setHours(e.target.value)}
+          />
 
-      {error && <p style={{ color: "red", marginTop: "12px" }}>{error}</p>}
+          <button onClick={handleSubmit} disabled={loading}>
+            {loading ? "Generating..." : "Generate Survival Plan"}
+          </button>
 
-      {result && (
-        <pre
-          style={{
-            background: "#f4f4f4",
-            padding: "16px",
-            marginTop: "20px",
-            overflowX: "auto",
-          }}
-        >
-          {JSON.stringify(result, null, 2)}
-        </pre>
-      )}
+          {error && <p className="error">{error}</p>}
+        </div>
+
+        {result && (
+          <div className="result">
+            <h3>{result.summary}</h3>
+
+            <div className="plan-grid">
+              {result.plan.map((item, idx) => (
+                <div key={idx} className="subject-card">
+                  <strong>{item.subject.toUpperCase()}</strong>
+                  <p>Days Left: {item.days_left}</p>
+                  <p>Urgency Score: {item.urgency_score}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
-
-export default App;
