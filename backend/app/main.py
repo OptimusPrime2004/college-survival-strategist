@@ -1,14 +1,12 @@
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import List
 from datetime import datetime
-from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
-# -----------------------------
-# CORS (important for Vercel)
-# -----------------------------
+# CORS (allow frontend)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -17,9 +15,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# -----------------------------
-# Request Model
-# -----------------------------
+# ---------- MODELS ----------
+
 class AnalyzeRequest(BaseModel):
     subjects: List[str]
     exam_dates: List[str]  # YYYY-MM-DD
@@ -27,61 +24,48 @@ class AnalyzeRequest(BaseModel):
     daily_hours: int
 
 
-# -----------------------------
-# Health Check
-# -----------------------------
+# ---------- ROUTES ----------
+
 @app.get("/")
-def root():
+def health():
     return {"status": "ok"}
 
 
-# -----------------------------
-# Main Logic
-# -----------------------------
 @app.post("/analyze")
 def analyze(data: AnalyzeRequest):
     try:
-        subjects = data.subjects
-        exam_dates = data.exam_dates
-        attendance = data.attendance
-        daily_hours = data.daily_hours
+        subjects = [s.strip() for s in data.subjects]
+        dates = [datetime.strptime(d, "%Y-%m-%d") for d in data.exam_dates]
 
-        # Basic validation
-        if not subjects or not exam_dates:
-            raise ValueError("Subjects and exam dates cannot be empty")
-
-        if len(subjects) != len(exam_dates):
-            raise ValueError("Subjects and exam dates count must match")
-
-        # Parse dates safely
-        parsed_dates = [
-            datetime.strptime(d, "%Y-%m-%d") for d in exam_dates
-        ]
+        if len(subjects) != len(dates):
+            raise HTTPException(
+                status_code=422,
+                detail="Subjects and exam dates count mismatch"
+            )
 
         today = datetime.today()
 
-        # Calculate urgency
-        subject_plan = []
-        for subject, exam_date in zip(subjects, parsed_dates):
-            days_left = max((exam_date - today).days, 0)
+        # Calculate days left per subject
+        plan = []
+        for subject, exam_date in zip(subjects, dates):
+            days_left = (exam_date - today).days
+            urgency = max(1, 30 - days_left)
 
-            priority = "High" if days_left <= 7 else "Medium" if days_left <= 14 else "Low"
-
-            subject_plan.append({
+            plan.append({
                 "subject": subject,
-                "exam_date": exam_date.strftime("%Y-%m-%d"),
                 "days_left": days_left,
-                "priority": priority,
-                "recommended_daily_hours": round(daily_hours / len(subjects), 1),
+                "urgency_score": urgency
             })
 
+        # Sort by urgency
+        plan.sort(key=lambda x: x["urgency_score"], reverse=True)
+
         return {
-            "success": True,
-            "attendance": attendance,
-            "daily_study_hours": daily_hours,
-            "plan": subject_plan,
+            "summary": "Study plan generated successfully",
+            "daily_hours": data.daily_hours,
+            "attendance": data.attendance,
+            "plan": plan
         }
 
     except Exception as e:
-        # This prevents silent crashes & 422 confusion
         raise HTTPException(status_code=400, detail=str(e))
